@@ -1,5 +1,13 @@
 # WebRemoteDesktop
 
+## Installation
+
+```
+pip install Pillow
+pip install pyautogui
+npm install
+```
+
 ## Testing:
 
 
