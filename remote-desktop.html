@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript">
+
+        const MAIN_URL = "http://teamks.pw:9000";
+
+        const REGISTER_URL = MAIN_URL + "/createUser";
+        const SCREENSIZE_URL = MAIN_URL + "/getScreenSize";
+        
+        var screenSize = "";
+        var screenX = 0;
+        var screenY = 0;
+
+        function getScreenSize() {
+            var httpRequest = new XMLHttpRequest();
+
+            function _getScreenSize() {
+                if(httpRequest.readyState == XMLHttpRequest.DONE) {
+                    var screenSize = httpRequest.response;
+                    screenX = parseInt(screenSize.split(",")[0]);
+                    screenY = parseInt(screenSize.split(",")[1]);
+                }
+            }
+
+            httpRequest.onreadystatechange = _getScreenSize;
+            httpRequest.open("GET", SCREENSIZE_URL, true);
+            httpRequest.send();
+        }
+
+        register();
+        
+        var userId = "";
+        var MONITORING_URL = "";
+        var MOUSING_URL = ""
+        var KEYBOARDING_URL = MAIN_URL + "/keyboarding/?userId=" + userId;
+
+        function register() {
+            var httpRequest = new XMLHttpRequest();
+
+            function getUserId() {
+                if(httpRequest.readyState == XMLHttpRequest.DONE) {
+                    userId = httpRequest.response;
+                    MONITORING_URL = MAIN_URL + "/getMonitorBuffer/?userId=" + userId;
+                    KEYBOARDING_URL = MAIN_URL + "/keyboarding/?userId=" + userId + "&key=";
+                }
+            }
+
+            httpRequest.onreadystatechange = getUserId;
+            httpRequest.open("GET", REGISTER_URL, true);
+            httpRequest.send();
+        }
+
+        register();
+
+        var globalBase64Image;
+
+        function monitoringCallback() {
+            var httpRequest = new XMLHttpRequest();
+
+            function changeMonitorBuffer() {
+                if (httpRequest.readyState == XMLHttpRequest.DONE) {
+                    // httpRequest.response
+                    globalBase64Image = httpRequest.response;
+                    
+                    document.body.style.backgroundSize = "cover";
+                    document.body.style.backgroundRepeat = "no-repeat";
+                    document.body.style.backgroundImage = 'url(data:image/JPEG;base64,'+ globalBase64Image + ") ";
+                } else {
+                    document.body.style.backgroundSize = "cover";
+                    document.body.style.backgroundRepeat = "no-repeat";
+                    document.body.style.backgroundImage = 'url(data:image/JPEG;base64,'+ globalBase64Image + ") ";
+                }
+            }
+        
+            httpRequest.onreadystatechange = changeMonitorBuffer;
+            httpRequest.open("GET", MONITORING_URL, true);
+            httpRequest.send()
+        }
+
+        var x = null;
+        var y = null;
+
+        document.addEventListener('mousemove', onMouseUpdate, false);
+        document.addEventListener('mouseenter', onMouseUpdate, false);
+
+        var MOUSE_CLICK_URL = "";
+
+        function onMouseUpdate(e) {
+            
+            getScreenSize();
+
+            eventX = e.pageX;
+            eventY = e.pageY;
+
+            var screenXRatio = screenX / window.screen.width;
+            var screenYRatio = screenY / window.screen.height;
+
+            eventX *= screenXRatio;
+            eventY *= screenYRatio;
+
+            eventX = parseInt(eventX);
+            eventY = parseInt(eventY);
+            
+            MOUSING_URL = MAIN_URL + "/mousing/?userId=" + userId + "&x=" + eventX.toString() + ";&y=" + eventY.toString() + ";";
+
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.open("GET", MOUSING_URL, true);
+            httpRequest.send();
+        }
+
+        document.addEventListener('mousedown', (event) => {
+            onMouseUpdate(event);
+            var httpRequest = new XMLHttpRequest();
+            MOUSE_CLICK_URL = MAIN_URL + "/mouseDown/?userId=" + userId;
+            httpRequest.open("GET", MOUSE_CLICK_URL, true);
+            httpRequest.send();
+        }, false);
+        
+        document.addEventListener('mouseenter', (event) => {
+            onMouseUpdate(event);
+            var httpRequest = new XMLHttpRequest();
+            MOUSE_CLICK_URL = MAIN_URL + "/mouseDown/?userId=" + userId;
+            httpRequest.open("GET", MOUSE_CLICK_URL, true);
+            httpRequest.send();
+        }, false);
+
+        document.addEventListener('mouseup', (event) => {
+            onMouseUpdate(event);
+            var httpRequest = new XMLHttpRequest();
+            MOUSE_CLICK_URL = MAIN_URL + "/mouseUp/?userId=" + userId;
+            httpRequest.open("GET", MOUSE_CLICK_URL, true);
+            httpRequest.send();
+        }, false);
+
+        document.addEventListener('contextmenu', (event) => {
+            onMouseUpdate(event);
+            var httpRequest = new XMLHttpRequest();
+            MOUSE_CLICK_URL = MAIN_URL + "/mouseRightClick/?userId" + userId;
+            httpRequest.open("GET", MOUSE_CLICK_URL, true);
+            httpRequest.send();
+        }, false)
+
+
+        setInterval(monitoringCallback, 100);
+    </script> 
+</head>
+
+<body>
+    <class id="monitor">
+        <p class="mainFrame"></p>
+        <p class="subFrame"></p>
+    </class>
+    
+    <script type="text/javascript">
+
+        document.addEventListener('keydown', (event) => {
+            const keyName = event.key;
+
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true", true);
+            httpRequest.send()
+            
+            console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true")
+        }, false);
+
+        document.addEventListener('keyup', (event) => {
+            const keyName = event.key;
+
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false", true);
+            httpRequest.send()
+            
+            console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false")
+        }, false);
+
+    </script>
+</body>
+
+</html>
