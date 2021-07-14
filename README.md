@@ -1,6 +1,6 @@
 # WebRemoteDesktop
 
-## Installation
+## Installation:
 
 ```
 pip install Pillow
