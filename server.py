@@ -146,12 +146,22 @@ def clientIOSubRoutine(requestPath):
                 clientX = requestPath.split("x=")[1].split(";")[0]
                 clientY = requestPath.split("y=")[1].split(";")[0]
 
-                pyautogui.moveTo(int(clientX), int(clientY))
+                try:
+                    pyautogui.moveTo(int(clientX), int(clientY))
+                except:
+                    pass 
 
     if "/getScreenSize" in requestPath:
         (x, y) = pyautogui.size()
         return createHttpResponse(str(x) + "," + str(y))
     
+    if "/mouseWhell" in requestPath:
+        # pyautogui.scroll
+        if checkUser(requestPath):
+            y = requestPath.split("y=")[1].split(";")[0]
+            pyautogui.scroll(int(y))
+            pass 
+
     if "/mouseDown" in requestPath:
         if checkUser(requestPath):
             try:

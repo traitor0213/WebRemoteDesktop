@@ -8,7 +8,7 @@
 
         const REGISTER_URL = MAIN_URL + "/createUser";
         const SCREENSIZE_URL = MAIN_URL + "/getScreenSize";
-        
+
         var screenSize = "";
         var screenX = 0;
         var screenY = 0;
@@ -17,7 +17,7 @@
             var httpRequest = new XMLHttpRequest();
 
             function _getScreenSize() {
-                if(httpRequest.readyState == XMLHttpRequest.DONE) {
+                if (httpRequest.readyState == XMLHttpRequest.DONE) {
                     var screenSize = httpRequest.response;
                     screenX = parseInt(screenSize.split(",")[0]);
                     screenY = parseInt(screenSize.split(",")[1]);
@@ -25,12 +25,12 @@
             }
 
             httpRequest.onreadystatechange = _getScreenSize;
-            httpRequest.open("GET", SCREENSIZE_URL, true);
+            httpRequest.open("GET", SCREENSIZE_URL + "/?user=" , true);
             httpRequest.send();
         }
 
         register();
-        
+
         var userId = "";
         var MONITORING_URL = "";
         var MOUSING_URL = ""
@@ -40,7 +40,7 @@
             var httpRequest = new XMLHttpRequest();
 
             function getUserId() {
-                if(httpRequest.readyState == XMLHttpRequest.DONE) {
+                if (httpRequest.readyState == XMLHttpRequest.DONE) {
                     userId = httpRequest.response;
                     MONITORING_URL = MAIN_URL + "/getMonitorBuffer/?userId=" + userId;
                     KEYBOARDING_URL = MAIN_URL + "/keyboarding/?userId=" + userId + "&key=";
@@ -54,6 +54,19 @@
 
         register();
 
+
+        const MOUSEWHELL_URL = MAIN_URL + "/mouseWhell/?userId="
+        window.addEventListener('mousewheel', function(e) {
+            
+            var y = e.deltaY * -1;
+
+            console.log(MOUSEWHELL_URL + userId + "&y=" + y.toString() + ";")
+
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.open("GET", MOUSEWHELL_URL + userId + "&y=" + y.toString() + ";", true);
+            httpRequest.send();
+        });
+
         var globalBase64Image;
 
         function monitoringCallback() {
@@ -63,19 +76,19 @@
                 if (httpRequest.readyState == XMLHttpRequest.DONE) {
                     // httpRequest.response
                     globalBase64Image = httpRequest.response;
-                    
+
                     document.body.style.backgroundColor = "black";
                     document.body.style.backgroundSize = "cover";
                     document.body.style.backgroundRepeat = "no-repeat";
-                    document.body.style.backgroundImage = 'url(data:image/JPEG;base64,'+ globalBase64Image + ") ";
+                    document.body.style.backgroundImage = 'url(data:image/JPEG;base64,' + globalBase64Image + ") ";
                 } else {
                     document.body.style.backgroundColor = "black";
                     document.body.style.backgroundSize = "cover";
                     document.body.style.backgroundRepeat = "no-repeat";
-                    document.body.style.backgroundImage = 'url(data:image/JPEG;base64,'+ globalBase64Image + ") ";
+                    document.body.style.backgroundImage = 'url(data:image/JPEG;base64,' + globalBase64Image + ") ";
                 }
             }
-        
+
             httpRequest.onreadystatechange = changeMonitorBuffer;
             httpRequest.open("GET", MONITORING_URL, true);
             httpRequest.send()
@@ -84,37 +97,33 @@
         var x = null;
         var y = null;
 
-        document.addEventListener('mousemove',  (event) => { onMouseUpdate(event) }, false);
+        document.addEventListener('mousemove', (event) => { onMouseUpdate(event) }, false);
         document.addEventListener('mouseenter', (event) => { onMouseUpdate(event) }, false);
 
         var MOUSE_CLICK_URL = "";
 
         function onMouseUpdate(e) {
-            
             getScreenSize();
 
             eventX = e.pageX;
             eventY = e.pageY;
             var body = document.body,
-            html = document.documentElement;
+                html = document.documentElement;
 
-            var height = Math.max( body.scrollHeight, body.offsetHeight, 
-                                html.clientHeight, html.scrollHeight, html.offsetHeight );
-                                
+            var height = Math.max(body.scrollHeight, body.offsetHeight,
+                html.clientHeight, html.scrollHeight, html.offsetHeight);
+
             var width = document.body.offsetWidth;
-            
+
             var screenXRatio = screenX / width;
             var screenYRatio = screenY / height;
-
-            console.log(width);
-            console.log(height);
 
             eventX *= screenXRatio;
             eventY *= screenYRatio;
 
             eventX = parseInt(eventX);
             eventY = parseInt(eventY);
-            
+
             MOUSING_URL = MAIN_URL + "/mousing/?userId=" + userId + "&x=" + eventX.toString() + ";&y=" + eventY.toString() + ";";
 
             var httpRequest = new XMLHttpRequest();
@@ -148,7 +157,7 @@
 
 
         setInterval(monitoringCallback, 100);
-    </script> 
+    </script>
 </head>
 
 <body>
@@ -160,7 +169,7 @@
             var httpRequest = new XMLHttpRequest();
             httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true", true);
             httpRequest.send()
-            
+
             console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true")
         }, false);
 
@@ -170,7 +179,7 @@
             var httpRequest = new XMLHttpRequest();
             httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false", true);
             httpRequest.send()
-            
+
             console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false")
         }, false);
 
