@@ -9,14 +9,14 @@ import pyautogui
 import random
 
 from urllib import parse
+import screeninfo
 
 pyautogui.FAILSAFE = False
 
 userIdList = []
 screenshotList = []
-imageBytes = None
-image = ImageGrab.grab()
 
+'''
 screenCaptureServiceStop = False
 def screenCaptureService():
     global screenCaptureServiceStop
@@ -32,6 +32,37 @@ def screenCaptureService():
             imageBytes = _imageBytes.getvalue()
 
         time.sleep(0.1)
+'''
+
+def getScreenCapture(monitorIndex: int):
+    try:
+        monitor = screeninfo.get_monitors()[monitorIndex]
+    except:
+        return None
+
+    image = ImageGrab.grab(all_screens=True)
+
+    xPlus = monitor.x
+    yPlus = monitor.y
+
+    image = image.crop([monitor.x, monitor.y, monitor.width + xPlus, monitor.height + yPlus])
+    _imageBytes = io.BytesIO()
+    image.save(_imageBytes, format='JPEG')
+    imageBytes = _imageBytes.getvalue()
+
+    return imageBytes
+
+def getScreenMousePosition(monitorIndex: int):
+    try:
+        monitor = screeninfo.get_monitors()[monitorIndex]
+    except:
+        return None
+
+    xPlus = monitor.x
+    yPlus = monitor.y
+
+    return [xPlus, yPlus]
+
 
 keyList = [
     "ctrl",
@@ -132,10 +163,12 @@ def checkUser(requestPath):
 
     return existUserId
 
+def getScreenIndex(requestPath):
+    if "&screenIndex=" in requestPath:
+        return int(requestPath.split("&screenIndex=")[1].split(";")[0])
+
 def clientIOSubRoutine(requestPath):
-    global imageBytes
     global userIdList
-    global image
     global screenshotList
 
     if "/createUser" in requestPath:
@@ -153,11 +186,15 @@ def clientIOSubRoutine(requestPath):
             if "x=" in requestPath and "y=" in requestPath:
                 clientX = requestPath.split("x=")[1].split(";")[0]
                 clientY = requestPath.split("y=")[1].split(";")[0]
+                screenIndex = getScreenIndex(requestPath)
+                if screenIndex != None:
+                    
+                    (xPlus, yPlus) = getScreenMousePosition(screenIndex)
 
-                try:
-                    pyautogui.moveTo(int(clientX), int(clientY))
-                except:
-                    pass 
+                    try:
+                        pyautogui.moveTo(int(clientX) + xPlus, int(clientY) + yPlus)
+                    except:
+                        pass 
 
     if "/getScreenSize" in requestPath:
         (x, y) = pyautogui.size()
@@ -186,7 +223,7 @@ def clientIOSubRoutine(requestPath):
         if checkUser(requestPath):
             pyautogui.click(button='right')
 
-    if "/keyboarding" in requestPath:
+    if "/keyboarding/" in requestPath:
         if checkUser(requestPath) == True:
             if "key=" in requestPath:
                 key = requestPath.split("key=")[1].split("&")[0]
@@ -225,42 +262,15 @@ def clientIOSubRoutine(requestPath):
                     except:
                         pass
 
-    if "/getMonitorBuffer/" in requestPath:
-        if checkUser(requestPath) == True:
-            if imageBytes != None:
-                body = base64.b64encode(imageBytes)
-                beforeMonitor = body
-
-                return createHttpResponse(body)
-        else:
-            return createHttpResponse("error: unregistered ID")
+    if "/getScreenCount/" in requestPath:
+        return createHttpResponse(str(len(screeninfo.get_monitors())))
 
     if "/screenshotRouter2/" in requestPath:
         if checkUser(requestPath) == True:
-            if imageBytes != None:
-                return createHttpResponse(imageBytes, contentType="image/jpeg")
-
-    if "/screenshotId/" in requestPath:
-        if checkUser(requestPath) == True:
-
-            # append to list
-            """
-            "/screenshotRouter/" + str(time.perf_counter_ns())
-            """
-
-            screenshotInfo = {"imageFile": imageBytes, "routeTo":str(time.perf_counter_ns())}
-            screenshotList.append(screenshotInfo)
-
-            return createHttpResponse(screenshotInfo["routeTo"])
-        else:
-            return createHttpResponse("error: unregistered ID")
-
-    for screenshotInfo in screenshotList:
-        if checkUser(requestPath) == True:
-            if "/screenshotRouter/" + screenshotInfo["routeTo"] in requestPath:
-                body = createHttpResponse(screenshotInfo["imageFile"], contentType="image/jpeg")
-                screenshotList.remove(screenshotInfo)
-                return body    
+            if getScreenIndex(requestPath) != None:
+                image = getScreenCapture(getScreenIndex(requestPath))
+                if image != None:
+                    return createHttpResponse(image, contentType="image/jpeg")
 
     return createHttpResponse("")
 
@@ -298,7 +308,6 @@ def init() -> socket.socket:
 
 def main():
     threading.Thread(target=keyStatusManager).start()
-    threading.Thread(target=screenCaptureService).start()
     threading.Thread(target=clientIOManager).start()
     
     serverSocket = init()

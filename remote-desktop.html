@@ -25,7 +25,7 @@
             }
 
             httpRequest.onreadystatechange = _getScreenSize;
-            httpRequest.open("GET", SCREENSIZE_URL + "/?user=" , true);
+            httpRequest.open("GET", SCREENSIZE_URL + "/?user=", true);
             httpRequest.send();
         }
 
@@ -33,6 +33,8 @@
         var MONITORING_URL = "";
         var MOUSING_URL = ""
         var KEYBOARDING_URL = MAIN_URL + "/keyboarding/?userId=" + userId;
+        var MONITORCOUNT_URL = MAIN_URL + "/getScreenCount/"
+        var screenIndex = 1;
 
         function register() {
             var httpRequest = new XMLHttpRequest();
@@ -41,7 +43,7 @@
                 if (httpRequest.readyState == XMLHttpRequest.DONE) {
                     userId = httpRequest.response;
                     KEYBOARDING_URL = MAIN_URL + "/keyboarding/?userId=" + userId + "&key=";
-                    MONITORING_URL = MAIN_URL + "/screenshotRouter2/?userId=" + userId;
+                    MONITORING_URL = MAIN_URL + "/screenshotRouter2/?userId=" + userId + "&screenIndex=" + screenIndex + ";";
                 }
             }
 
@@ -54,8 +56,8 @@
 
 
         const MOUSEWHELL_URL = MAIN_URL + "/mouseWhell/?userId="
-        window.addEventListener('mousewheel', function(e) {
-            
+        window.addEventListener('mousewheel', function (e) {
+
             var y = e.deltaY * -1;
 
             // console.log(MOUSEWHELL_URL + userId + "&y=" + y.toString() + ";")
@@ -69,7 +71,7 @@
 
         function screenUpdateCallback() {
             var img = new Image()
-    
+
             function imageLoadCallback() {
 
                 document.body.style.backgroundColor = "black";
@@ -114,10 +116,13 @@
             eventX = parseInt(eventX);
             eventY = parseInt(eventY);
 
-            MOUSING_URL = MAIN_URL + "/mousing/?userId=" + userId + "&x=" + eventX.toString() + ";&y=" + eventY.toString() + ";";
+            MOUSING_URL = MAIN_URL + "/mousing/?userId=" + userId + 
+                "&x=" + eventX.toString() + 
+                ";&y=" + eventY.toString() + 
+                ";&screenIndex=" + screenIndex + ";";
 
             var httpRequest = new XMLHttpRequest();
-            
+
             httpRequest.open("GET", MOUSING_URL, true);
             httpRequest.send();
         }
@@ -154,23 +159,67 @@
     <class id="mainScreen" style="size:0px">
     </class>
     <script type="text/javascript">
+        // hot key
         // press keyboard
+        var isCtrl = false, isMeta = false;        
+
         document.addEventListener('keydown', (event) => {
+            if(event.metaKey == true) {
+                isMeta = true;
+            } 
+
+            if(event.ctrlKey == true) {
+                isCtrl = true;
+            }
+
             const keyName = event.key;
 
             var httpRequest = new XMLHttpRequest();
             httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true", true);
-            httpRequest.send()
+            httpRequest.send();
+
+            
+            var e = event;
+            console.log(isMeta, isCtrl);
+            if (isCtrl == true && isMeta == true) {
+                var screenCount = -1;
+
+                var httpRequest = new XMLHttpRequest();
+                httpRequest.onreadystatechange = function() { screenCount = httpRequest.response }
+                httpRequest.open("GET", MONITORCOUNT_URL, true);
+                httpRequest.send();
+                
+                console.log("####")
+                console.log(MONITORCOUNT_URL);
+
+                if(screenIndex > screenCount) {
+                    screenIndex = -1
+                }
+                
+                screenIndex += 1
+
+                MONITORING_URL = MAIN_URL + "/screenshotRouter2/?userId=" + userId + "&screenIndex=" + screenIndex + ";";
+                console.log(MONITORING_URL);
+            }
+
 
             // console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true")
         }, false);
 
         document.addEventListener('keyup', (event) => {
+            if(event.metaKey == false) {
+                isMeta = false;
+            } 
+
+            if(event.ctrlKey == false){
+                isCtrl = false;
+            }
+
             const keyName = event.key;
 
             var httpRequest = new XMLHttpRequest();
             httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false", true);
-            httpRequest.send()
+            httpRequest.send();
 
             // console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false")
         }, false);
