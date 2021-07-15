@@ -13,19 +13,24 @@ from urllib import parse
 pyautogui.FAILSAFE = False
 
 userIdList = []
-
+screenshotList = []
+imageBytes = None
 image = ImageGrab.grab()
 
 screenCaptureServiceStop = False
 def screenCaptureService():
     global screenCaptureServiceStop
+    global imageBytes
     while True:
         if screenCaptureServiceStop == True:
             break 
 
         if len(userIdList) != 0:
-            global image
             image = ImageGrab.grab()
+            _imageBytes = io.BytesIO()
+            image.save(_imageBytes, format='JPEG')
+            imageBytes = _imageBytes.getvalue()
+
         time.sleep(0.1)
 
 keyList = [
@@ -128,7 +133,10 @@ def checkUser(requestPath):
     return existUserId
 
 def clientIOSubRoutine(requestPath):
+    global imageBytes
     global userIdList
+    global image
+    global screenshotList
 
     if "/createUser" in requestPath:
         userId = str(time.perf_counter_ns())
@@ -156,11 +164,9 @@ def clientIOSubRoutine(requestPath):
         return createHttpResponse(str(x) + "," + str(y))
     
     if "/mouseWhell" in requestPath:
-        # pyautogui.scroll
         if checkUser(requestPath):
             y = requestPath.split("y=")[1].split(";")[0]
             pyautogui.scroll(int(y))
-            pass 
 
     if "/mouseDown" in requestPath:
         if checkUser(requestPath):
@@ -219,19 +225,42 @@ def clientIOSubRoutine(requestPath):
                     except:
                         pass
 
-    if "/getMonitorBuffer" in requestPath:
+    if "/getMonitorBuffer/" in requestPath:
         if checkUser(requestPath) == True:
-            global image
+            if imageBytes != None:
+                body = base64.b64encode(imageBytes)
+                beforeMonitor = body
 
-            imageBytes = io.BytesIO()
-            image.save(imageBytes, format='JPEG')
-            imageBytes = imageBytes.getvalue()
-            
-            body = base64.b64encode(imageBytes)
-
-            return createHttpResponse(body)
+                return createHttpResponse(body)
         else:
             return createHttpResponse("error: unregistered ID")
+
+    if "/screenshotRouter2/" in requestPath:
+        if checkUser(requestPath) == True:
+            if imageBytes != None:
+                return createHttpResponse(imageBytes, contentType="image/jpeg")
+
+    if "/screenshotId/" in requestPath:
+        if checkUser(requestPath) == True:
+
+            # append to list
+            """
+            "/screenshotRouter/" + str(time.perf_counter_ns())
+            """
+
+            screenshotInfo = {"imageFile": imageBytes, "routeTo":str(time.perf_counter_ns())}
+            screenshotList.append(screenshotInfo)
+
+            return createHttpResponse(screenshotInfo["routeTo"])
+        else:
+            return createHttpResponse("error: unregistered ID")
+
+    for screenshotInfo in screenshotList:
+        if checkUser(requestPath) == True:
+            if "/screenshotRouter/" + screenshotInfo["routeTo"] in requestPath:
+                body = createHttpResponse(screenshotInfo["imageFile"], contentType="image/jpeg")
+                screenshotList.remove(screenshotInfo)
+                return body    
 
     return createHttpResponse("")
 
@@ -241,10 +270,7 @@ def clientIO(clientSocket: socket.socket):
     httpRequestHeader = ""
 
     while True:
-        try:
-            recvedByte = clientSocket.recv(1)
-        except:
-            return
+        recvedByte = clientSocket.recv(1)
         
         httpRequestHeader += recvedByte.decode('utf-8')
 
@@ -264,6 +290,7 @@ def clientIO(clientSocket: socket.socket):
 
 def init() -> socket.socket:
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serverSocket.setblocking(False)
     serverSocket.bind(("", 9000))
     serverSocket.listen(20)
 
@@ -279,11 +306,16 @@ def main():
     global clientIOThreadList
 
     while True:
-        (clientSocket, clientAddress) = serverSocket.accept()
-        clientIOThread = threading.Thread(target=clientIO, args=(clientSocket, ))
-        
-        clientIOThreadList.append({"socket": clientSocket, "ns": time.perf_counter_ns()})
-        clientIOThread.start()
+        try:
+            (clientSocket, clientAddress) = serverSocket.accept()
+            clientSocket.setblocking(True)
+            clientIOThread = threading.Thread(target=clientIO, args=(clientSocket, ))
+            
+            clientIOThreadList.append({"socket": clientSocket, "ns": time.perf_counter_ns()})
+            clientIOThread.start()
+        except:
+            time.sleep(0)
+            pass 
 
     return 
 
