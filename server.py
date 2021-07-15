@@ -65,7 +65,7 @@ def keyStatusManager():
         currentNs = time.perf_counter_ns()
 
         for keyStatus in keyStatusMap:
-            if (currentNs - keyStatus["ns"]) > 3000000000:
+            if (currentNs - keyStatus["ns"]) > 1000000000:
                 print("timeout to keyup:", keyStatus["key"])
                 
                 try:

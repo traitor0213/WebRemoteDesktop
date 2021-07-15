@@ -141,7 +141,7 @@
         document.addEventListener('contextmenu', (event) => {
             onMouseUpdate(event);
             var httpRequest = new XMLHttpRequest();
-            MOUSE_CLICK_URL = MAIN_URL + "/mouseRightClick/?userId" + userId;
+            MOUSE_CLICK_URL = MAIN_URL + "/mouseRightClick/?userId=" + userId;
             httpRequest.open("GET", MOUSE_CLICK_URL, true);
             httpRequest.send();
         }, false)
