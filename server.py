@@ -188,7 +188,6 @@ def clientIOSubRoutine(requestPath):
                 key = parse.unquote(key)
 
                 if "keydown=true" in requestPath:
-
                     try:
                         pyautogui.keyDown(key)
                     except:

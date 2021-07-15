@@ -4,7 +4,7 @@
 <head>
     <script type="text/javascript">
 
-        const MAIN_URL = "http://localhost:9000";
+        const MAIN_URL = "http://teamks.pw:9000";
 
         const REGISTER_URL = MAIN_URL + "/createUser";
         const SCREENSIZE_URL = MAIN_URL + "/getScreenSize";
@@ -64,10 +64,12 @@
                     // httpRequest.response
                     globalBase64Image = httpRequest.response;
                     
+                    document.body.style.backgroundColor = "black";
                     document.body.style.backgroundSize = "cover";
                     document.body.style.backgroundRepeat = "no-repeat";
                     document.body.style.backgroundImage = 'url(data:image/JPEG;base64,'+ globalBase64Image + ") ";
                 } else {
+                    document.body.style.backgroundColor = "black";
                     document.body.style.backgroundSize = "cover";
                     document.body.style.backgroundRepeat = "no-repeat";
                     document.body.style.backgroundImage = 'url(data:image/JPEG;base64,'+ globalBase64Image + ") ";
@@ -82,8 +84,8 @@
         var x = null;
         var y = null;
 
-        document.addEventListener('mousemove', onMouseUpdate, false);
-        document.addEventListener('mouseenter', onMouseUpdate, false);
+        document.addEventListener('mousemove',  (event) => { onMouseUpdate(event) }, false);
+        document.addEventListener('mouseenter', (event) => { onMouseUpdate(event) }, false);
 
         var MOUSE_CLICK_URL = "";
 
@@ -93,9 +95,19 @@
 
             eventX = e.pageX;
             eventY = e.pageY;
+            var body = document.body,
+            html = document.documentElement;
 
-            var screenXRatio = screenX / window.screen.width;
-            var screenYRatio = screenY / window.screen.height;
+            var height = Math.max( body.scrollHeight, body.offsetHeight, 
+                                html.clientHeight, html.scrollHeight, html.offsetHeight );
+                                
+            var width = document.body.offsetWidth;
+            
+            var screenXRatio = screenX / width;
+            var screenYRatio = screenY / height;
+
+            console.log(width);
+            console.log(height);
 
             eventX *= screenXRatio;
             eventY *= screenYRatio;
@@ -111,14 +123,6 @@
         }
 
         document.addEventListener('mousedown', (event) => {
-            onMouseUpdate(event);
-            var httpRequest = new XMLHttpRequest();
-            MOUSE_CLICK_URL = MAIN_URL + "/mouseDown/?userId=" + userId;
-            httpRequest.open("GET", MOUSE_CLICK_URL, true);
-            httpRequest.send();
-        }, false);
-        
-        document.addEventListener('mouseenter', (event) => {
             onMouseUpdate(event);
             var httpRequest = new XMLHttpRequest();
             MOUSE_CLICK_URL = MAIN_URL + "/mouseDown/?userId=" + userId;
@@ -148,11 +152,6 @@
 </head>
 
 <body>
-    <class id="monitor">
-        <p class="mainFrame"></p>
-        <p class="subFrame"></p>
-    </class>
-    
     <script type="text/javascript">
 
         document.addEventListener('keydown', (event) => {
