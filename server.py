@@ -1,5 +1,8 @@
+# this code is writed for python 3.8
+
 from PIL import ImageGrab
 
+import os
 import io
 import socket
 import threading
@@ -13,26 +16,8 @@ import screeninfo
 
 pyautogui.FAILSAFE = False
 
-userIdList = []
+userInfoList = []
 screenshotList = []
-
-'''
-screenCaptureServiceStop = False
-def screenCaptureService():
-    global screenCaptureServiceStop
-    global imageBytes
-    while True:
-        if screenCaptureServiceStop == True:
-            break 
-
-        if len(userIdList) != 0:
-            image = ImageGrab.grab()
-            _imageBytes = io.BytesIO()
-            image.save(_imageBytes, format='JPEG')
-            imageBytes = _imageBytes.getvalue()
-
-        time.sleep(0.1)
-'''
 
 def getScreenCapture(monitorIndex: int):
     try:
@@ -89,6 +74,7 @@ keyStatusMap = []
 
 keyStatusManagerStop = False 
 def keyStatusManager():
+    global userInfoList
     global keyStatusMap
     global keyStatusManagerStop
 
@@ -100,15 +86,18 @@ def keyStatusManager():
 
         currentNs = time.perf_counter_ns()
 
-        for keyStatus in keyStatusMap:
-            if (currentNs - keyStatus["ns"]) > 1000000000:
-                print("timeout to keyup:", keyStatus["key"])
-                
-                try:
+        userInfoIndex = 0
+        for userInfo in userInfoList:
+            if (currentNs - userInfo["last-connection"]) > 3000000000:
+                print("# delete user: " + userInfo["userId"])
+                print("# reason: connection timeout")
+
+                for keyStatus in keyStatusMap:
                     pyautogui.keyUp(keyStatus["key"])
-                    keyStatusMap.remove(keyStatus)
-                except:
-                    pass
+
+                userInfoList.remove(userInfo)
+
+            userInfoIndex += 1
 
 clientIOThreadList = []
 
@@ -155,11 +144,17 @@ def createHttpResponse(body, contentType="text"):
     return httpResponseHeader
 
 def checkUser(requestPath):
-    global userIdList
+    global userInfoList
     existUserId = False
-    for userId in userIdList:
-        if "/?userId=" + userId in requestPath:
+    userInfoIndex = 0
+    for userInfo in userInfoList:
+        if "/?userId=" + userInfo["userId"] in requestPath:
+            userInfo["last-connection"] = time.perf_counter_ns()
+            userInfoList[userInfoIndex] = userInfo 
             existUserId = True
+        
+        userInfoIndex += 1
+ 
 
     return existUserId
 
@@ -168,18 +163,29 @@ def getScreenIndex(requestPath):
         return int(requestPath.split("&screenIndex=")[1].split(";")[0])
 
 def clientIOSubRoutine(requestPath):
-    global userIdList
+    global userInfoList
     global screenshotList
+
+    print(requestPath)
+
+    if "/remote-desktop" in requestPath:
+        print(os.getcwd() + "/remote-desktop.html")
+        
+        f = open(os.getcwd() + "/remote-desktop.html", "r")
+        body = f.read()
+        f.close()
+
+        return createHttpResponse(body)
 
     if "/createUser" in requestPath:
         userId = str(time.perf_counter_ns())
-        userIdList.append(userId)
+        userInfoList.append({"userId": userId, "last-connection": time.perf_counter_ns()})
 
         return createHttpResponse(userId)
 
     if "/deleteUser" in requestPath:
         if checkUser(requestPath) == True:
-            userIdList.remove(existUserId)
+            userInfoList.remove(existUserId)
 
     if "/mousing" in requestPath:
         if checkUser(requestPath) == True:
@@ -188,7 +194,6 @@ def clientIOSubRoutine(requestPath):
                 clientY = requestPath.split("y=")[1].split(";")[0]
                 screenIndex = getScreenIndex(requestPath)
                 if screenIndex != None:
-                    
                     (xPlus, yPlus) = getScreenMousePosition(screenIndex)
 
                     try:
@@ -246,12 +251,12 @@ def clientIOSubRoutine(requestPath):
                     except:
                         pass
 
-                    for userId in userIdList:
-                        if "/?userId=" + userId in requestPath:
+                    for userInfo in userInfoList:
+                        if "/?userId=" + userInfo["userId"] in requestPath:
                             break
 
                     if {key: "down"} not in keyStatusMap: 
-                        keyStatusMap.append({"key": key, key: "down", "ns":time.perf_counter_ns(), "userId":userId})
+                        keyStatusMap.append({"key": key, key: "down", "ns":time.perf_counter_ns(), "userId":userInfo["userId"]})
                 else:
                     for keyStatus in keyStatusMap:
                         if keyStatus["key"] == key:
@@ -280,8 +285,11 @@ def clientIO(clientSocket: socket.socket):
     httpRequestHeader = ""
 
     while True:
-        recvedByte = clientSocket.recv(1)
-        
+        try:
+            recvedByte = clientSocket.recv(1)
+        except:
+            return 
+
         httpRequestHeader += recvedByte.decode('utf-8')
 
         if "\r\n\r\n" in httpRequestHeader:

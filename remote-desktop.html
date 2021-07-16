@@ -95,8 +95,6 @@
         var MOUSE_CLICK_URL = "";
 
         function onMouseUpdate(e) {
-            getScreenSize();
-
             eventX = e.pageX;
             eventY = e.pageY;
             var body = document.body,
@@ -151,7 +149,8 @@
             httpRequest.send();
         }, false)
 
-        setInterval(screenUpdateCallback, 50);
+        setInterval(getScreenSize, 1000)
+        setInterval(screenUpdateCallback, 100);
     </script>
 </head>
 
@@ -205,7 +204,7 @@
 
             // console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true")
         }, false);
-
+        
         document.addEventListener('keyup', (event) => {
             if(event.metaKey == false) {
                 isMeta = false;
