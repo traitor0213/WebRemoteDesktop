@@ -54,7 +54,6 @@
 
         register();
 
-
         const MOUSEWHELL_URL = MAIN_URL + "/mouseWhell/?userId="
         window.addEventListener('mousewheel', function (e) {
 
@@ -78,12 +77,13 @@
                 document.body.style.backgroundSize = "cover";
                 document.body.style.backgroundRepeat = "no-repeat";
                 document.body.style.backgroundImage = 'url(' + img.src + ')';
-
-                globalCounter += 1
             }
 
             img.src = MONITORING_URL + '&counter=' + globalCounter.toString();
+            globalCounter += 1
+
             img.onload = imageLoadCallback
+            
         }
 
         var x = null;

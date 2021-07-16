@@ -4,7 +4,10 @@ from PIL import ImageGrab
 
 import os
 import io
+
 import socket
+import select
+
 import threading
 import base64
 import time
@@ -73,13 +76,13 @@ keyStatusMap = []
 
 
 keyStatusManagerStop = False 
-def keyStatusManager():
+def userStatusManager():
     global userInfoList
     global keyStatusMap
     global keyStatusManagerStop
 
     while True:
-        time.sleep(3)
+        time.sleep(10)
         
         if keyStatusManagerStop == True:
             break 
@@ -88,10 +91,11 @@ def keyStatusManager():
 
         userInfoIndex = 0
         for userInfo in userInfoList:
-            if (currentNs - userInfo["last-connection"]) > 3000000000:
+            if (currentNs - userInfo["last-connection"]) > 10000000000:
                 print("# delete user: " + userInfo["userId"])
                 print("# reason: connection timeout")
-
+                
+                # key release
                 for keyStatus in keyStatusMap:
                     pyautogui.keyUp(keyStatus["key"])
 
@@ -99,30 +103,8 @@ def keyStatusManager():
 
             userInfoIndex += 1
 
-clientIOThreadList = []
+clientIOList = []
 
-clientIOManagerStop = False
-def clientIOManager():
-    global clientIOManagerStop
-    global clientIOThreadList
-
-    while True:
-        if clientIOManagerStop == True:
-            break 
-
-        for clientIOThread in clientIOThreadList:            
-            if (time.perf_counter_ns() - clientIOThread["ns"]) > 3000000000:
-                try:
-                    clientIOThread["socket"].shutdown(socket.SHUT_RDWR)
-                    clientIOThread["socket"].close()
-                except:
-                    pass 
-
-                clientIOThreadList.remove(clientIOThread)
-
-        time.sleep(3)
-
-    return
 
 def createHttpResponse(body, contentType="text"):
     bodyLength = len(body)
@@ -162,11 +144,10 @@ def getScreenIndex(requestPath):
     if "&screenIndex=" in requestPath:
         return int(requestPath.split("&screenIndex=")[1].split(";")[0])
 
+
 def clientIOSubRoutine(requestPath):
     global userInfoList
     global screenshotList
-
-    print(requestPath)
 
     if "/remote-desktop" in requestPath:
         print(os.getcwd() + "/remote-desktop.html")
@@ -196,10 +177,7 @@ def clientIOSubRoutine(requestPath):
                 if screenIndex != None:
                     (xPlus, yPlus) = getScreenMousePosition(screenIndex)
 
-                    try:
-                        pyautogui.moveTo(int(clientX) + xPlus, int(clientY) + yPlus)
-                    except:
-                        pass 
+                    threading.Thread(target=pyautogui.moveTo, args=(int(clientX) + xPlus, int(clientY) + yPlus)).start()
 
     if "/getScreenSize" in requestPath:
         (x, y) = pyautogui.size()
@@ -208,7 +186,7 @@ def clientIOSubRoutine(requestPath):
     if "/mouseWhell" in requestPath:
         if checkUser(requestPath):
             y = requestPath.split("y=")[1].split(";")[0]
-            pyautogui.scroll(int(y))
+            threading.Thread(target=pyautogui.scroll, args=(int(y),)).start()
 
     if "/mouseDown" in requestPath:
         if checkUser(requestPath):
@@ -279,60 +257,85 @@ def clientIOSubRoutine(requestPath):
 
     return createHttpResponse("")
 
-def clientIO(clientSocket: socket.socket):
-    global keyStatusMap
-    global userList 
+def clientReadRoutine(clientSocket):
+    global clientIOList
     httpRequestHeader = ""
 
     while True:
         try:
-            recvedByte = clientSocket.recv(1)
-        except:
-            return 
+            recvedByte = clientSocket["socket"].recv(1)
+        except BlockingIOError:
+            continue
 
         httpRequestHeader += recvedByte.decode('utf-8')
 
         if "\r\n\r\n" in httpRequestHeader:
             break 
 
-    requestMethod = httpRequestHeader.split(" ")[0]
     requestPath = httpRequestHeader.split(" ")[1].split(" ")[0]
 
+    # print("#", requestPath, " => processing..")
+
+    clientWriteRoutine(clientSocket["socket"], requestPath)
+
+    # print("#", requestPath, " => done!")
+
+    clientIOList.remove(clientSocket)
+    return
+
+def clientWriteRoutine(clientSocket, requestPath):
     httpResponse = clientIOSubRoutine(requestPath)
 
     clientSocket.send(httpResponse)
     clientSocket.shutdown(socket.SHUT_RDWR)
     clientSocket.close()
+    
 
-    return
+clientIOManagerStop = False
+def clientIOManager():
+    global clientIOManagerStop
+    global clientIOList
 
+    while True:
+        time.sleep(0)
+        clientSocketList = []
+
+        for clientIO in clientIOList:
+            clientSocketList.append(clientIO["socket"].fileno())
+
+        if len(clientSocketList) != 0:
+            readReadySockets, writeReadySockets, exceptedSockets = select.select(clientSocketList, [], [])
+
+            if len(readReadySockets) != 0:
+                for readReadySocket in readReadySockets:
+                    for clientIO in clientIOList:
+                        if clientIO["socket"].fileno() == readReadySocket:
+                            clientReadRoutine(clientIO)
+                            # print(readReadySocket)
+
+            
 def init() -> socket.socket:
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.setblocking(False)
     serverSocket.bind(("", 9000))
     serverSocket.listen(20)
 
     return serverSocket 
 
 def main():
-    threading.Thread(target=keyStatusManager).start()
+    threading.Thread(target=userStatusManager).start()
     threading.Thread(target=clientIOManager).start()
     
     serverSocket = init()
     
-    global clientIOThreadList
+    global clientIOList
 
     while True:
-        try:
+        readReadySockets, writeReadySockets, exceptedSockets = select.select([serverSocket], [], [])
+
+        if serverSocket in readReadySockets:
             (clientSocket, clientAddress) = serverSocket.accept()
-            clientSocket.setblocking(True)
-            clientIOThread = threading.Thread(target=clientIO, args=(clientSocket, ))
-            
-            clientIOThreadList.append({"socket": clientSocket, "ns": time.perf_counter_ns()})
-            clientIOThread.start()
-        except:
-            time.sleep(0)
-            pass 
+
+            clientIOList.append({"socket": clientSocket, "ns": time.perf_counter_ns()})
 
     return 
 
