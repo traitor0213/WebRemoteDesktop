@@ -2,10 +2,8 @@
 
 ## Installation:
 
-```
-pip install Pillow
-pip install pyautogui
-npm install
+``` cmd
+pip install -r requirements.txt
 ```
 
 ## Testing:
@@ -13,7 +11,6 @@ npm install
 
 ```
 py server.py
-node index.js
 
 connect http://localhost:9001/remote-desktop
 ```
