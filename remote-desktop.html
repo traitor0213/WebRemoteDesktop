@@ -147,6 +147,8 @@
             MOUSE_CLICK_URL = MAIN_URL + "/mouseRightClick/?userId=" + userId;
             httpRequest.open("GET", MOUSE_CLICK_URL, true);
             httpRequest.send();
+
+            event.preventDefault();
         }, false)
 
         setInterval(getScreenSize, 1000)
@@ -201,6 +203,7 @@
                 console.log(MONITORING_URL);
             }
 
+            event.preventDefault();
 
             // console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true")
         }, false);

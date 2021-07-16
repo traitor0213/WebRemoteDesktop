@@ -25,20 +25,20 @@ screenshotList = []
 def getScreenCapture(monitorIndex: int):
     try:
         monitor = screeninfo.get_monitors()[monitorIndex]
+        image = ImageGrab.grab(all_screens=True)
+
+        xPlus = monitor.x
+        yPlus = monitor.y
+
+        image = image.crop([monitor.x, monitor.y, monitor.width + xPlus, monitor.height + yPlus])
+        _imageBytes = io.BytesIO()
+        image.save(_imageBytes, format='JPEG')
+        imageBytes = _imageBytes.getvalue()
+
+        return imageBytes
     except:
         return None
 
-    image = ImageGrab.grab(all_screens=True)
-
-    xPlus = monitor.x
-    yPlus = monitor.y
-
-    image = image.crop([monitor.x, monitor.y, monitor.width + xPlus, monitor.height + yPlus])
-    _imageBytes = io.BytesIO()
-    image.save(_imageBytes, format='JPEG')
-    imageBytes = _imageBytes.getvalue()
-
-    return imageBytes
 
 def getScreenMousePosition(monitorIndex: int):
     try:
@@ -91,7 +91,7 @@ def userStatusManager():
 
         userInfoIndex = 0
         for userInfo in userInfoList:
-            if (currentNs - userInfo["last-connection"]) > 10000000000:
+            if (currentNs - userInfo["last-connection"]) > 1000000000:
                 print("# delete user: " + userInfo["userId"])
                 print("# reason: connection timeout")
                 
@@ -224,11 +224,8 @@ def clientIOSubRoutine(requestPath):
                 key = parse.unquote(key)
 
                 if "keydown=true" in requestPath:
-                    try:
-                        pyautogui.keyDown(key)
-                    except:
-                        pass
-
+                    threading.Thread(target=pyautogui.keyDown, args=(key,)).start()
+                    
                     for userInfo in userInfoList:
                         if "/?userId=" + userInfo["userId"] in requestPath:
                             break
@@ -240,10 +237,7 @@ def clientIOSubRoutine(requestPath):
                         if keyStatus["key"] == key:
                             keyStatusMap.remove(keyStatus)
 
-                    try:
-                        pyautogui.keyUp(key)
-                    except:
-                        pass
+                    threading.Thread(target=pyautogui.keyUp, args=(key,)).start()
 
     if "/getScreenCount/" in requestPath:
         return createHttpResponse(str(len(screeninfo.get_monitors())))
