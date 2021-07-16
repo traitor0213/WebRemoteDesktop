@@ -20,7 +20,6 @@ import screeninfo
 pyautogui.FAILSAFE = False
 
 userInfoList = []
-screenshotList = []
 
 def getScreenCapture(monitorIndex: int):
     try:
@@ -39,8 +38,7 @@ def getScreenCapture(monitorIndex: int):
     except:
         return None
 
-
-def getScreenMousePosition(monitorIndex: int):
+def getScreenPosition(monitorIndex: int):
     try:
         monitor = screeninfo.get_monitors()[monitorIndex]
     except:
@@ -65,6 +63,7 @@ keyList = [
 keyReplaceMap = [
     {"Control": "ctrl"},
     {"Shift": "shift"},
+    {"Alt": "alt"},
     {"Meta": "win"},
     {"ArrowRight": "right"},
     {"ArrowLeft": "left"},
@@ -147,7 +146,6 @@ def getScreenIndex(requestPath):
 
 def clientIOSubRoutine(requestPath):
     global userInfoList
-    global screenshotList
 
     if "/remote-desktop" in requestPath:
         print(os.getcwd() + "/remote-desktop.html")
@@ -160,7 +158,11 @@ def clientIOSubRoutine(requestPath):
 
     if "/createUser" in requestPath:
         userId = str(time.perf_counter_ns())
-        userInfoList.append({"userId": userId, "last-connection": time.perf_counter_ns()})
+        userInfo = {"userId": userId, "last-connection": time.perf_counter_ns()}
+
+        print("# create user: " + userInfo["userId"])
+
+        userInfoList.append(userInfo)
 
         return createHttpResponse(userId)
 
@@ -175,7 +177,7 @@ def clientIOSubRoutine(requestPath):
                 clientY = requestPath.split("y=")[1].split(";")[0]
                 screenIndex = getScreenIndex(requestPath)
                 if screenIndex != None:
-                    (xPlus, yPlus) = getScreenMousePosition(screenIndex)
+                    (xPlus, yPlus) = getScreenPosition(screenIndex)
 
                     threading.Thread(target=pyautogui.moveTo, args=(int(clientX) + xPlus, int(clientY) + yPlus)).start()
 
@@ -223,8 +225,15 @@ def clientIOSubRoutine(requestPath):
 
                 key = parse.unquote(key)
 
+                keyLocation = requestPath.split("location=")[1].split(";")[0]
+
+                # print("# key down => ", key + keyLocation)
+
+                time.sleep(0)
+
                 if "keydown=true" in requestPath:
-                    threading.Thread(target=pyautogui.keyDown, args=(key,)).start()
+
+                    threading.Thread(target=pyautogui.keyDown, args=(key + keyLocation,)).start()
                     
                     for userInfo in userInfoList:
                         if "/?userId=" + userInfo["userId"] in requestPath:
@@ -237,7 +246,7 @@ def clientIOSubRoutine(requestPath):
                         if keyStatus["key"] == key:
                             keyStatusMap.remove(keyStatus)
 
-                    threading.Thread(target=pyautogui.keyUp, args=(key,)).start()
+                    threading.Thread(target=pyautogui.keyUp, args=(key + keyLocation,)).start()
 
     if "/getScreenCount/" in requestPath:
         return createHttpResponse(str(len(screeninfo.get_monitors())))

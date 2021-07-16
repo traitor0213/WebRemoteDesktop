@@ -59,8 +59,6 @@
 
             var y = e.deltaY * -1;
 
-            // console.log(MOUSEWHELL_URL + userId + "&y=" + y.toString() + ";")
-
             var httpRequest = new XMLHttpRequest();
             httpRequest.open("GET", MOUSEWHELL_URL + userId + "&y=" + y.toString() + ";", true);
             httpRequest.send();
@@ -165,6 +163,9 @@
         var isCtrl = false, isMeta = false;        
 
         document.addEventListener('keydown', (event) => {
+
+            var keyLocation = ["", "left", "right", "", "", ""][event.location];
+
             if(event.metaKey == true) {
                 isMeta = true;
             } 
@@ -176,9 +177,8 @@
             const keyName = event.key;
 
             var httpRequest = new XMLHttpRequest();
-            httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true", true);
+            httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true&location=" + keyLocation + ";", true);
             httpRequest.send();
-
             
             var e = event;
             console.log(isMeta, isCtrl);
@@ -204,11 +204,12 @@
             }
 
             event.preventDefault();
-
-            // console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=true")
         }, false);
         
         document.addEventListener('keyup', (event) => {
+            
+            var keyLocation = ["", "left", "right", "", "", ""][event.location];
+
             if(event.metaKey == false) {
                 isMeta = false;
             } 
@@ -220,10 +221,8 @@
             const keyName = event.key;
 
             var httpRequest = new XMLHttpRequest();
-            httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false", true);
+            httpRequest.open("GET", KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false&location=" + keyLocation + ";", true);
             httpRequest.send();
-
-            // console.log(KEYBOARDING_URL + encodeURIComponent(keyName) + "&keydown=false")
         }, false);
 
     </script>
