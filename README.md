@@ -12,5 +12,5 @@ pip install -r requirements.txt
 ```
 py server.py
 
-connect http://localhost:9001/remote-desktop
+connect http://localhost:9000/remote-desktop
 ```
