@@ -183,24 +183,27 @@
             var e = event;
             console.log(isMeta, isCtrl);
             if (isCtrl == true && isMeta == true) {
-                var screenCount = -1;
+                var screenCount = 0;
 
                 var httpRequest = new XMLHttpRequest();
-                httpRequest.onreadystatechange = function() { screenCount = httpRequest.response }
+                httpRequest.onreadystatechange = function() { 
+                    screenCount = httpRequest.response;
+                    if (screenCount != "") {
+
+                        console.log(screenIndex,  parseInt(screenCount));
+
+                        screenIndex += 1
+
+                        if(screenIndex >= parseInt(screenCount)) {
+                            screenIndex = 0;
+                        }                
+
+                        MONITORING_URL = MAIN_URL + "/screenshotRouter2/?userId=" + userId + "&screenIndex=" + screenIndex + ";";
+                    }
+                }
+
                 httpRequest.open("GET", MONITORCOUNT_URL, true);
                 httpRequest.send();
-                
-                console.log("####")
-                console.log(MONITORCOUNT_URL);
-
-                if(screenIndex > screenCount) {
-                    screenIndex = -1
-                }
-                
-                screenIndex += 1
-
-                MONITORING_URL = MAIN_URL + "/screenshotRouter2/?userId=" + userId + "&screenIndex=" + screenIndex + ";";
-                console.log(MONITORING_URL);
             }
 
             event.preventDefault();

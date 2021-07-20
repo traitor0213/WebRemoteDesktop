@@ -102,8 +102,6 @@ def userStatusManager():
 
             userInfoIndex += 1
 
-clientIOList = []
-
 
 def createHttpResponse(body, contentType="text"):
     bodyLength = len(body)
@@ -177,9 +175,12 @@ def clientIOSubRoutine(requestPath):
                 clientY = requestPath.split("y=")[1].split(";")[0]
                 screenIndex = getScreenIndex(requestPath)
                 if screenIndex != None:
-                    (xPlus, yPlus) = getScreenPosition(screenIndex)
-
-                    threading.Thread(target=pyautogui.moveTo, args=(int(clientX) + xPlus, int(clientY) + yPlus)).start()
+                    
+                    try:
+                        (xPlus, yPlus) = getScreenPosition(screenIndex)
+                        threading.Thread(target=pyautogui.moveTo, args=(int(clientX) + xPlus, int(clientY) + yPlus)).start()
+                    except:
+                        pass 
 
     if "/getScreenSize" in requestPath:
         (x, y) = pyautogui.size()
@@ -260,13 +261,12 @@ def clientIOSubRoutine(requestPath):
 
     return createHttpResponse("")
 
-def clientReadRoutine(clientSocket):
-    global clientIOList
+def clientIORoutine(clientSocket):
     httpRequestHeader = ""
 
     while True:
         try:
-            recvedByte = clientSocket["socket"].recv(1)
+            recvedByte = clientSocket.recv(1)
         except BlockingIOError:
             continue
 
@@ -279,42 +279,12 @@ def clientReadRoutine(clientSocket):
 
     # print("#", requestPath, " => processing..")
 
-    clientWriteRoutine(clientSocket["socket"], requestPath)
+    httpResponse = clientIOSubRoutine(requestPath)
+    clientSocket.send(httpResponse)
 
     # print("#", requestPath, " => done!")
 
-    clientIOList.remove(clientSocket)
     return
-
-def clientWriteRoutine(clientSocket, requestPath):
-    httpResponse = clientIOSubRoutine(requestPath)
-
-    clientSocket.send(httpResponse)
-    clientSocket.shutdown(socket.SHUT_RDWR)
-    clientSocket.close()
-    
-
-clientIOManagerStop = False
-def clientIOManager():
-    global clientIOManagerStop
-    global clientIOList
-
-    while True:
-        time.sleep(0)
-        clientSocketList = []
-
-        for clientIO in clientIOList:
-            clientSocketList.append(clientIO["socket"].fileno())
-
-        if len(clientSocketList) != 0:
-            readReadySockets, writeReadySockets, exceptedSockets = select.select(clientSocketList, [], [])
-
-            if len(readReadySockets) != 0:
-                for readReadySocket in readReadySockets:
-                    for clientIO in clientIOList:
-                        if clientIO["socket"].fileno() == readReadySocket:
-                            clientReadRoutine(clientIO)
-                            # print(readReadySocket)
 
             
 def init() -> socket.socket:
@@ -326,20 +296,28 @@ def init() -> socket.socket:
 
 def main():
     threading.Thread(target=userStatusManager).start()
-    threading.Thread(target=clientIOManager).start()
     
     serverSocket = init()
-    
-    global clientIOList
+    readySockets = [ serverSocket, ]
 
     while True:
-        readReadySockets, writeReadySockets, exceptedSockets = select.select([serverSocket], [], [])
+        readReadySockets, writeReadySockets, exceptedSockets = select.select(readySockets, [], [])
+        
+        for readReadySocket in readReadySockets:
+            if readReadySocket == serverSocket:
+                (clientSocket, clientAddress) = serverSocket.accept()
+                readySockets.append(clientSocket)
+            else: 
+                print(readReadySocket)
 
-        if serverSocket in readReadySockets:
-            (clientSocket, clientAddress) = serverSocket.accept()
-
-            clientIOList.append({"socket": clientSocket, "ns": time.perf_counter_ns()})
-
+                clientIORoutine(readReadySocket)
+                readReadySocket.shutdown(socket.SHUT_RDWR)
+                readReadySocket.close()
+                
+                readySockets.remove(readReadySocket)
+        
+        time.sleep(0)
+        
     return 
 
 if __name__ == "__main__":
