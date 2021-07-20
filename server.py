@@ -1,6 +1,8 @@
 # this code is writed for python 3.8
 
 from PIL import ImageGrab
+import screeninfo
+import pyautogui
 
 import os
 import io
@@ -9,14 +11,9 @@ import socket
 import select
 
 import threading
-import base64
 import time
-import pyautogui
-import random
 
 from urllib import parse
-import screeninfo
-
 pyautogui.FAILSAFE = False
 
 userInfoList = []
@@ -164,10 +161,6 @@ def clientIOSubRoutine(requestPath):
 
         return createHttpResponse(userId)
 
-    if "/deleteUser" in requestPath:
-        if checkUser(requestPath) == True:
-            userInfoList.remove(existUserId)
-
     if "/mousing" in requestPath:
         if checkUser(requestPath) == True:
             if "x=" in requestPath and "y=" in requestPath:
@@ -301,16 +294,16 @@ def main():
     readySockets = [ serverSocket, ]
 
     while True:
-        readReadySockets, writeReadySockets, exceptedSockets = select.select(readySockets, [], [])
+        (readReadySockets, writeReadySockets, exceptedSockets) = select.select(readySockets, [], [])
         
         for readReadySocket in readReadySockets:
             if readReadySocket == serverSocket:
                 (clientSocket, clientAddress) = serverSocket.accept()
                 readySockets.append(clientSocket)
             else: 
-                print(readReadySocket)
+                readReadySocket: socket.socket
 
-                clientIORoutine(readReadySocket)
+                clientIORoutine(readReadySocket)                
                 readReadySocket.shutdown(socket.SHUT_RDWR)
                 readReadySocket.close()
                 
